@@ -1,0 +1,6 @@
+{
+  "name": "@web2print/contracts",
+  "private": true,
+  "type": "module",
+  "description": "Client-safe API contracts shared between the backend and storefronts"
+}

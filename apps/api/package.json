@@ -1,0 +1,5 @@
+{
+  "name": "@web2print/api",
+  "private": true,
+  "type": "module"
+}

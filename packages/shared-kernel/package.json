@@ -1,0 +1,6 @@
+{
+  "name": "@web2print/shared-kernel",
+  "private": true,
+  "type": "module",
+  "description": "Backend-only shared primitives and ports for Web2Print commerce domains"
+}
