@@ -6,6 +6,8 @@ export type SiteId = Identifier<'SiteId'>;
 export type TenantId = Identifier<'TenantId'>;
 export type CustomerId = Identifier<'CustomerId'>;
 export type CorrelationId = Identifier<'CorrelationId'>;
+export type ActorId = Identifier<'ActorId'>;
+export type EventId = Identifier<'EventId'>;
 export type BusinessRecordId = Identifier<'BusinessRecordId'>;
 
 function createIdentifier<Kind extends string>(value: string, kind: Kind): Identifier<Kind> {
@@ -21,5 +23,7 @@ export const tenantId = (value: string): TenantId => createIdentifier(value, 'Te
 export const customerId = (value: string): CustomerId => createIdentifier(value, 'CustomerId');
 export const correlationId = (value: string): CorrelationId =>
   createIdentifier(value, 'CorrelationId');
+export const actorId = (value: string): ActorId => createIdentifier(value, 'ActorId');
+export const eventId = (value: string): EventId => createIdentifier(value, 'EventId');
 export const businessRecordId = (value: string): BusinessRecordId =>
   createIdentifier(value, 'BusinessRecordId');
