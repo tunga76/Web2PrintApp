@@ -2,5 +2,21 @@
   "name": "@web2print/shared-kernel",
   "private": true,
   "type": "module",
-  "description": "Backend-only shared primitives and ports for Web2Print commerce domains"
+  "description": "Backend-only shared primitives and ports for Web2Print commerce domains",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.0"
+  }
 }

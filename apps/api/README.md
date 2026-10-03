@@ -1,5 +1,5 @@
 # API Application
 
-Node.js backend application written in TypeScript. Organize the API as a modular monolith with business modules under `src/modules/`.
+Node.js 24 LTS API using Fastify and TypeScript. Organize it as a modular monolith with business modules under `src/modules/`; use PostgreSQL through Prisma ORM for persistence.
 
-Before implementation, record the API framework, Node.js runtime version, database, and data-access library in an ADR. The API should depend on `packages/shared-kernel` through its public exports and keep provider/database implementations in infrastructure adapters.
+The API should depend on `packages/shared-kernel` through its public exports and keep HTTP, persistence, and provider implementations at the infrastructure boundary. Keep business invariants in domain/application code.

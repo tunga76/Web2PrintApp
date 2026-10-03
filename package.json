@@ -1,8 +1,8 @@
 {
   "name": "web2print-platform",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24 <25"
+  }
 }

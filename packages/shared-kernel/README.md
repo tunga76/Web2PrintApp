@@ -1,16 +1,16 @@
 # Shared Kernel
 
-This package is reserved for small, stable concepts that are genuinely shared by multiple backend domains or storefront deployments.
+This package contains small, stable concepts shared by backend domains and ecommerce deployments. It has no framework, database, queue, payment-provider, or UI dependencies.
 
 ## Planned first modules
 
-- Branded identifiers for site, tenant, customer, and business records.
-- Exact `Money` and currency representation.
-- Typed domain errors and result values.
-- Clock/time abstractions.
-- Actor, site, optional tenant, and correlation context.
-- Transaction, idempotency, and domain-event ports.
+- Branded identifiers for site, tenant, customer, correlation, and business records.
+- Exact `Money` arithmetic in integer minor units with explicit currency.
+- Typed domain errors and discriminated result values.
+- Clock abstraction for deterministic time-dependent behavior.
+- Actor, site, optional tenant, and correlation context (add when the first consumer defines the contract).
+- Transaction, idempotency, and domain-event ports (add with their first consumers).
 
 Keep framework, database, queue, payment-provider, and web-to-print policies out of this package. Export public APIs from a single package entry point; do not make consumers import internal file paths.
 
-The package is an empty scaffold at this stage. Add implementations only after the first consuming domain confirms the required contract.
+The first implementation exports identifiers, `Money`, `DomainError`, `Result`, and `Clock` from one public entry point. Keep business-specific validation and policies in their owning domains.

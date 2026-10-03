@@ -10,7 +10,7 @@ This repository is the starting workspace for multiple e-commerce storefronts th
 - `packages/contracts` — runtime-safe request/response schemas shared with storefronts where appropriate.
 - `.ai` — architecture, domain, security, and workflow rules.
 
-The workspace is structural scaffolding. Framework, database, ORM, authentication, and package versions are not installed or selected here yet. Record those choices in an ADR before adding their dependencies.
+The confirmed foundation is Node.js 24 LTS, TypeScript, pnpm workspaces, Next.js App Router, Fastify, PostgreSQL, and Prisma ORM. The initial commit contains structural application placeholders; application dependencies have not been installed yet. See `.ai/project-foundation.md` for the decisions and remaining provider choices.
 
 ## Shared-kernel boundary
 

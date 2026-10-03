@@ -1,6 +1,6 @@
 # Project Foundation
 
-This document records the initial product architecture before implementation. The selected direction is a Next.js frontend and Node.js backend written in TypeScript. The workspace currently contains rule/workflow documents but no application scaffold. Select the Node.js API framework, database, and data-access approach through an ADR before scaffolding.
+This document records the product architecture and confirmed foundation decisions. The repository uses a pnpm monorepo with a Next.js storefront and a Node.js/TypeScript API. The API starts as a Fastify modular monolith backed by PostgreSQL and Prisma ORM. Keep provider and infrastructure choices behind clear application boundaries.
 
 ## Product boundary
 
@@ -33,7 +33,7 @@ Keep these as logical boundaries first. Use a modular monolith unless concrete s
 ## Build sequence
 
 1. **Confirm decisions:** target market and jurisdiction, B2C/B2B scope, production model, initial products, payment method, shipping approach, language/currency, and deployment constraints.
-2. **Confirm and record the stack:** use Next.js App Router and a Node.js/TypeScript backend; select supported runtime versions, API framework, primary database, data-access approach, file/object storage, hosting, and operational tooling before creating the scaffold.
+2. **Confirm and record the stack:** use Next.js App Router, Node.js 24 LTS, TypeScript, pnpm workspaces, Fastify, PostgreSQL, and Prisma ORM. Decide file/object storage, hosting, authentication, payment/shipping providers, and operational tooling before implementing their integrations.
 3. **Create the application skeleton:** local development instructions, configuration/secrets handling, health checks, logging/error handling, database migrations, and CI quality checks.
 4. **Implement the commerce core:** catalog/configuration and pricing, then cart/checkout, payment integration, immutable order snapshot, and customer notifications.
 5. **Implement web-to-print operations:** upload isolation, artwork validation/proof, production queue, shipment tracking, and operator administration.
@@ -46,15 +46,25 @@ Keep these as logical boundaries first. Use a modular monolith unless concrete s
 | Market and legal jurisdiction | Initial country/region and customer type | Tax, checkout terms, privacy, invoicing |
 | Production model | Own facility, print partners, or hybrid | Product catalog, SLA, operations |
 | Initial catalog | Products and supported configuration options | Pricing and artwork profiles |
-| Application stack | Frontend/backend framework and runtime | Scaffold and CI setup |
-| Data and file storage | Database, artwork/object storage, retention | Data model and upload implementation |
+| File storage | Object storage provider and retention | Artwork upload implementation |
+| Authentication | Identity/session approach and account lifecycle | Customer and admin authentication |
 | Payments and shipping | Providers and manual/automated operations | Checkout and fulfillment integration |
 | Brand and language | Initial locale, currency, naming and visual direction | Storefront content and localization |
 
-## Existing stack direction
+## Confirmed stack
 
-- Frontend: Next.js App Router with TypeScript, following the architecture and folder-structure rules.
-- Backend: Node.js API written in TypeScript, organized around business domains and inward dependencies.
-- API framework, runtime version, database engine, data-access library, authentication approach, payment provider, object storage, hosting, and CI service remain undecided because no application scaffold or deployment configuration is present in the workspace.
+- Workspace: pnpm monorepo with `apps/*` and `packages/*` workspaces.
+- Runtime: Node.js 24 LTS for the storefront, API, and shared packages. Next.js currently requires Node.js 20.9 or newer.
+- Frontend: Next.js App Router and TypeScript. Prefer Server Components; add Client Components only for interactive UI.
+- Backend: Fastify and TypeScript, organized as a modular monolith by business domain. Keep HTTP, persistence, and provider integrations outside domain decisions.
+- Database: PostgreSQL with Prisma ORM. Keep pricing, order, payment, and production invariants in application/domain logic rather than generated persistence models.
+- Shared packages: `packages/shared-kernel` contains small backend-neutral primitives only; `packages/contracts` contains client-safe API contracts. Domain policies remain in their owning application modules.
+
+## Still undecided
+
+- Object storage provider and artwork retention policy.
+- Authentication and session strategy.
+- Payment and shipping providers.
+- Hosting, CI, observability, and deployment topology.
 
 Do not encode provider-specific API behavior, legal terms, prices, production tolerances, or delivery promises until the corresponding decision is confirmed against current authoritative sources.
