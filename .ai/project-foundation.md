@@ -1,10 +1,16 @@
 # Project Foundation
 
-This document records the product architecture and confirmed foundation decisions. The repository uses a pnpm monorepo with a Next.js storefront and a Node.js/TypeScript API. The API starts as a Fastify modular monolith backed by PostgreSQL and Prisma ORM. Keep provider and infrastructure choices behind clear application boundaries.
+This document records the product architecture and confirmed MVP scope. The repository uses a pnpm monorepo with one Next.js App Router application containing the storefront, admin UI, and Node.js Route Handler APIs. The application is a modular monolith backed by PostgreSQL and Prisma ORM.
 
 ## Product boundary
 
-Build a customer-facing web-to-print commerce system. The first release should support a small, operationally validated catalog and the complete path from product selection through payment, artwork handling, production, and shipment. Expand catalog breadth only after that path is reliable.
+Build a Solopress-style UK web-to-print commerce MVP for B2B and B2C customers using hybrid manufacturing. Customer-facing language is English and currency is GBP. Initial products: business cards, flyers, leaflets, posters, brochures, booklets, stickers, and banners. Options include size, orientation, material, paper type/weight, printing sides, lamination, finishing, quantity, and delivery speed.
+
+Customer scope: registration, login, password reset, catalog/search, product configuration, instant pricing, artwork upload, persistent cart, checkout, Stripe sandbox, order tracking, and reorder.
+
+Admin scope: product/pricing/order/customer management, proof approval, production queue, manual shipping tracking, and dashboard. Production scope: artwork review, proof workflow, and production workflow.
+
+Out of scope: online design editor, live payment processing, automated shipping integrations, marketplaces, multi-vendor, multi-warehouse, and ERP integrations.
 
 ## Initial domain boundaries
 
@@ -29,42 +35,53 @@ Keep these as logical boundaries first. Use a modular monolith unless concrete s
 4. Retries and duplicate callbacks cannot create duplicate orders, charges, stock movements, or refunds.
 5. Customer data and uploaded artwork are accessible only to authorized owners and operational roles.
 6. Every manual change that can affect money, stock, artwork approval, or production is attributable and recoverable.
+7. Amounts are integer GBP minor units; VAT is attached to the priced configuration and captured in order snapshots.
+8. Hybrid manufacturing is tracked per order line; initial production assignment and carrier tracking are manual.
 
 ## Build sequence
 
-1. **Confirm decisions:** target market and jurisdiction, B2C/B2B scope, production model, initial products, payment method, shipping approach, language/currency, and deployment constraints.
-2. **Confirm and record the stack:** use Next.js App Router, Node.js 24 LTS, TypeScript, pnpm workspaces, Fastify, PostgreSQL, and Prisma ORM. Decide file/object storage, hosting, authentication, payment/shipping providers, and operational tooling before implementing their integrations.
-3. **Create the application skeleton:** local development instructions, configuration/secrets handling, health checks, logging/error handling, database migrations, and CI quality checks.
-4. **Implement the commerce core:** catalog/configuration and pricing, then cart/checkout, payment integration, immutable order snapshot, and customer notifications.
-5. **Implement web-to-print operations:** upload isolation, artwork validation/proof, production queue, shipment tracking, and operator administration.
-6. **Pilot a small catalog:** run representative real orders through payment, artwork, production, packaging, shipment, cancellation, and refund scenarios before broad launch.
+1. Database schema and migrations.
+2. Authentication and authorization.
+3. Product catalog.
+4. Product configurator.
+5. Pricing and VAT calculation.
+6. Artwork upload and review.
+7. Persistent cart.
+8. Checkout.
+9. Stripe sandbox payment.
+10. Order management, tracking, and reorder.
+11. Admin panel.
+12. Proof, production, and manual shipping workflow.
 
 ## Decisions still required
 
 | Decision | Options to evaluate | Needed before |
 |---|---|---|
-| Market and legal jurisdiction | Initial country/region and customer type | Tax, checkout terms, privacy, invoicing |
-| Production model | Own facility, print partners, or hybrid | Product catalog, SLA, operations |
-| Initial catalog | Products and supported configuration options | Pricing and artwork profiles |
-| File storage | Object storage provider and retention | Artwork upload implementation |
-| Authentication | Identity/session approach and account lifecycle | Customer and admin authentication |
-| Payments and shipping | Providers and manual/automated operations | Checkout and fulfillment integration |
-| Brand and language | Initial locale, currency, naming and visual direction | Storefront content and localization |
+| File storage provider and retention | S3-compatible provider; retention duration | Staging artwork integration |
+| Email delivery provider | SMTP/mail service; credentials | Staging reset and notification email |
+| Commercial price matrices | Product option combinations, quantity breaks, rates | Public sales |
+| Product VAT treatment | Admin-configurable per price/configuration; accountant review | Live sales |
+| Shipping charges and delivery SLAs | Admin-managed manual methods/surcharges | Checkout availability |
+| Production partner rules | Manual assignment to own production or partner | Production operations |
+| Brand assets | Approved logo, colours, photography, copy | Final storefront polish |
 
 ## Confirmed stack
 
-- Workspace: pnpm monorepo with `apps/*` and `packages/*` workspaces.
-- Runtime: Node.js 24 LTS for the storefront, API, and shared packages. Next.js currently requires Node.js 20.9 or newer.
-- Frontend: Next.js App Router and TypeScript. Prefer Server Components; add Client Components only for interactive UI.
-- Backend: Fastify and TypeScript, organized as a modular monolith by business domain. Keep HTTP, persistence, and provider integrations outside domain decisions.
-- Database: PostgreSQL with Prisma ORM. Keep pricing, order, payment, and production invariants in application/domain logic rather than generated persistence models.
-- Shared packages: `packages/shared-kernel` contains small backend-neutral primitives only; `packages/contracts` contains client-safe API contracts. Domain policies remain in their owning application modules.
+- Workspace: pnpm monorepo; the application is `apps/storefront`.
+- Runtime: Node.js 24 LTS.
+- Full stack: Next.js App Router and TypeScript, with Route Handlers for APIs and Server Components by default.
+- UI: Tailwind CSS and shadcn/ui.
+- Database: PostgreSQL and Prisma ORM 7.10 with Prisma Client and the documented PostgreSQL driver adapter.
+- Authentication: Auth.js/NextAuth credentials flow with database-backed users and JWT sessions; password reset uses hashed, expiring, single-use tokens.
+- Storage: S3-compatible service adapter; no paid provider is enabled without approval.
+- Payments: Stripe test mode only.
+- Hosting: Vercel development/staging. Production deployment requires explicit approval.
+- Shared packages: `packages/shared-kernel` remains small and server-only. Domain policy stays in feature modules.
 
 ## Still undecided
 
-- Object storage provider and artwork retention policy.
-- Authentication and session strategy.
-- Payment and shipping providers.
-- Hosting, CI, observability, and deployment topology.
+- Default product option/price datasets and legally reviewed VAT assignments.
+- S3-compatible provider, email provider, staging credentials, shipping surcharges, and production SLAs.
+- Brand assets and final public marketing copy.
 
-Do not encode provider-specific API behavior, legal terms, prices, production tolerances, or delivery promises until the corresponding decision is confirmed against current authoritative sources.
+Use documented MVP assumptions to keep implementation moving. Keep unresolved commercial/provider items grouped in `.ai/assumptions.md`; never enable live payment or production deployment without explicit approval.

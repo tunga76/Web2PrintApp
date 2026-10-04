@@ -9,6 +9,8 @@ dist/
 build/
 .next/
 coverage/
+*.tsbuildinfo
+apps/*/src/generated/prisma/
 
 # Local environment and secrets
 .env

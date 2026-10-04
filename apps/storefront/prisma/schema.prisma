@@ -1,0 +1,697 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  PRODUCTION
+}
+
+enum CustomerAccountType {
+  PERSONAL
+  BUSINESS
+}
+
+enum AccountMemberRole {
+  OWNER
+  MANAGER
+  BUYER
+  BILLING
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum PriceModifierType {
+  NONE
+  FIXED
+  PER_UNIT
+  PERCENTAGE_BPS
+}
+
+enum CartStatus {
+  ACTIVE
+  CONVERTED
+  ABANDONED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  IN_PRODUCTION
+  PARTIALLY_SHIPPED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+}
+
+enum ArtworkStatus {
+  UPLOADING
+  UPLOADED
+  VALIDATING
+  REVIEW_REQUIRED
+  APPROVED
+  REJECTED
+  QUARANTINED
+}
+
+enum ProofStatus {
+  PREPARING
+  AWAITING_CUSTOMER
+  APPROVED
+  CHANGES_REQUESTED
+  SUPERSEDED
+}
+
+enum ManufacturingMethod {
+  OWN_PRODUCTION
+  PRINT_PARTNER
+  UNASSIGNED
+}
+
+enum ProductionStatus {
+  AWAITING_ARTWORK
+  ARTWORK_REVIEW
+  AWAITING_PROOF_APPROVAL
+  READY_FOR_PRODUCTION
+  IN_PRODUCTION
+  FINISHING
+  PACKAGING
+  READY_TO_SHIP
+  COMPLETE
+  ON_HOLD
+  CANCELLED
+}
+
+enum ShipmentStatus {
+  PREPARING
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  EXCEPTION
+  CANCELLED
+}
+
+enum DeliverySpeed {
+  STANDARD
+  EXPRESS
+}
+
+model User {
+  id                   String                 @id @default(cuid())
+  name                 String?                @db.VarChar(160)
+  email                String?                @unique @db.VarChar(254)
+  emailVerified        DateTime?
+  image                String?                @db.VarChar(2048)
+  passwordHash         String?                @db.VarChar(255)
+  role                 UserRole               @default(CUSTOMER)
+  failedLoginAttempts  Int                    @default(0)
+  lockedUntil          DateTime?
+  sessionVersion       Int                    @default(0)
+  lastLoginAt          DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  deletedAt            DateTime?
+  memberships          CustomerAccountMember[]
+  resetTokens          PasswordResetToken[]
+  mfaCredential        MfaCredential?
+  carts                Cart[]
+  placedOrders         Order[]                @relation("OrderPlacedBy")
+  uploadedArtwork      ArtworkAsset[]         @relation("ArtworkUploader")
+  reviewedProofs       ArtworkProof[]         @relation("ProofReviewer")
+  approvedProofs       ArtworkProof[]         @relation("ProofApprover")
+  assignedProduction   ProductionJob[]        @relation("ProductionAssignee")
+  auditEntries         AdminAuditLog[]         @relation("AuditActor")
+
+  @@index([role, deletedAt])
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique @db.VarChar(128)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model MfaCredential {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  encryptedSecret       Bytes
+  encryptionKeyVersion  String    @db.VarChar(64)
+  enabledAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mfa_credentials")
+}
+
+model CustomerAccount {
+  id                 String                  @id @default(cuid())
+  type               CustomerAccountType
+  displayName        String                  @db.VarChar(160)
+  legalName          String?                 @db.VarChar(200)
+  vatNumber          String?                 @db.VarChar(32)
+  companyNumber      String?                 @db.VarChar(32)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  deletedAt          DateTime?
+  members            CustomerAccountMember[]
+  addresses          CustomerAddress[]
+  carts              Cart[]
+  orders             Order[]
+  artworkAssets      ArtworkAsset[]
+
+  @@index([type, deletedAt])
+  @@map("customer_accounts")
+}
+
+model CustomerAccountMember {
+  accountId String
+  userId    String
+  role      AccountMemberRole @default(OWNER)
+  createdAt DateTime          @default(now())
+  account   CustomerAccount  @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([accountId, userId])
+  @@index([userId, role])
+  @@map("customer_account_members")
+}
+
+model CustomerAddress {
+  id           String          @id @default(cuid())
+  accountId    String
+  label        String          @db.VarChar(80)
+  recipient    String          @db.VarChar(160)
+  company      String?         @db.VarChar(200)
+  line1        String          @db.VarChar(200)
+  line2        String?         @db.VarChar(200)
+  city         String          @db.VarChar(120)
+  region       String?         @db.VarChar(120)
+  postcode     String          @db.VarChar(16)
+  countryCode  String          @default("GB") @db.Char(2)
+  phone        String?         @db.VarChar(32)
+  isDefault    Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
+  account      CustomerAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, deletedAt])
+  @@map("customer_addresses")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  parentId    String?
+  slug        String     @unique @db.VarChar(120)
+  name        String     @db.VarChar(160)
+  description String?    @db.Text
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+
+  @@index([parentId, isActive, sortOrder])
+  @@map("categories")
+}
+
+model Product {
+  id                String                 @id @default(cuid())
+  categoryId        String
+  slug              String                 @unique @db.VarChar(160)
+  sku               String                 @unique @db.VarChar(64)
+  name              String                 @db.VarChar(180)
+  shortDescription  String?                @db.VarChar(500)
+  description       String?                @db.Text
+  status            ProductStatus          @default(DRAFT)
+  vatRateBps        Int                    @default(2000)
+  isIndicativePricing Boolean              @default(false)
+  sortOrder         Int                    @default(0)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  category          Category               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  optionGroups      ProductOptionGroup[]
+  priceTiers        ProductPriceTier[]
+  images            ProductImage[]
+  cartLines         CartLine[]
+  orderLines        OrderLine[]
+
+  @@index([status, deletedAt, sortOrder])
+  @@index([categoryId, status])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  objectKey String   @db.VarChar(1024)
+  altText   String   @db.VarChar(240)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+  @@map("product_images")
+}
+
+model ProductOptionGroup {
+  id           String              @id @default(cuid())
+  productId    String
+  code         String              @db.VarChar(64)
+  name         String              @db.VarChar(120)
+  description  String?             @db.VarChar(300)
+  isRequired   Boolean             @default(true)
+  allowMultiple Boolean            @default(false)
+  sortOrder    Int                 @default(0)
+  isActive     Boolean             @default(true)
+  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  values       ProductOptionValue[]
+
+  @@unique([productId, code])
+  @@index([productId, isActive, sortOrder])
+  @@map("product_option_groups")
+}
+
+model ProductOptionValue {
+  id           String              @id @default(cuid())
+  groupId      String
+  code         String              @db.VarChar(64)
+  label        String              @db.VarChar(160)
+  description  String?             @db.VarChar(300)
+  sortOrder    Int                 @default(0)
+  modifierType PriceModifierType   @default(NONE)
+  modifierValue BigInt             @default(0)
+  isActive     Boolean             @default(true)
+  group        ProductOptionGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  cartSelections CartLineOption[]
+  incompatibleAsLeft  ProductOptionIncompatibility[] @relation("IncompatibilityLeft")
+  incompatibleAsRight ProductOptionIncompatibility[] @relation("IncompatibilityRight")
+
+  @@unique([groupId, code])
+  @@index([groupId, isActive, sortOrder])
+  @@map("product_option_values")
+}
+
+model ProductOptionIncompatibility {
+  id             String            @id @default(cuid())
+  leftValueId    String
+  rightValueId   String
+  reason         String?           @db.VarChar(240)
+  leftValue      ProductOptionValue @relation("IncompatibilityLeft", fields: [leftValueId], references: [id], onDelete: Cascade)
+  rightValue     ProductOptionValue @relation("IncompatibilityRight", fields: [rightValueId], references: [id], onDelete: Cascade)
+
+  @@unique([leftValueId, rightValueId])
+  @@map("product_option_incompatibilities")
+}
+
+model ProductPriceTier {
+  id             String    @id @default(cuid())
+  productId      String
+  quantity       Int
+  basePriceMinor BigInt
+  currency       String    @default("GBP") @db.Char(3)
+  vatRateBps     Int?
+  isActive       Boolean   @default(true)
+  startsAt       DateTime  @default(now())
+  endsAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cartLines      CartLine[]
+  orderLines     OrderLine[]
+
+  @@unique([productId, quantity])
+  @@index([productId, isActive, startsAt, endsAt])
+  @@map("product_price_tiers")
+}
+
+model DeliveryMethod {
+  id               String        @id @default(cuid())
+  code             String        @unique @db.VarChar(48)
+  name             String        @db.VarChar(120)
+  description      String?       @db.VarChar(300)
+  speed            DeliverySpeed
+  priceNetMinor    BigInt
+  currency         String        @default("GBP") @db.Char(3)
+  vatRateBps       Int           @default(2000)
+  estimatedDaysMin Int
+  estimatedDaysMax Int
+  isActive         Boolean       @default(true)
+  sortOrder        Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  orders           Order[]
+
+  @@index([isActive, speed, sortOrder])
+  @@map("delivery_methods")
+}
+
+model Cart {
+  id                String       @id @default(cuid())
+  customerAccountId String
+  userId            String
+  currency          String       @default("GBP") @db.Char(3)
+  status            CartStatus   @default(ACTIVE)
+  expiresAt         DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  customerAccount   CustomerAccount @relation(fields: [customerAccountId], references: [id], onDelete: Restrict)
+  user              User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lines             CartLine[]
+  order             Order?
+
+  @@index([customerAccountId, status, updatedAt])
+  @@index([userId, status])
+  @@map("carts")
+}
+
+model CartLine {
+  id                  String              @id @default(cuid())
+  cartId              String
+  productId           String
+  priceTierId         String
+  quantity            Int
+  configurationHash   String              @db.VarChar(64)
+  configurationSnapshot Json
+  lineNetMinor        BigInt
+  vatRateBps          Int
+  vatMinor            BigInt
+  lineGrossMinor      BigInt
+  currency            String              @default("GBP") @db.Char(3)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  cart                Cart                @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product             Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  priceTier           ProductPriceTier    @relation(fields: [priceTierId], references: [id], onDelete: Restrict)
+  options             CartLineOption[]
+  artwork             CartLineArtwork[]
+
+  @@unique([cartId, configurationHash])
+  @@index([cartId, createdAt])
+  @@map("cart_lines")
+}
+
+model CartLineOption {
+  cartLineId String
+  optionValueId String
+  cartLine   CartLine          @relation(fields: [cartLineId], references: [id], onDelete: Cascade)
+  optionValue ProductOptionValue @relation(fields: [optionValueId], references: [id], onDelete: Restrict)
+
+  @@id([cartLineId, optionValueId])
+  @@map("cart_line_options")
+}
+
+model Order {
+  id                    String       @id @default(cuid())
+  orderNumber           String       @unique @db.VarChar(32)
+  customerAccountId     String
+  placedByUserId        String
+  cartId                String?      @unique
+  deliveryMethodId      String
+  status                OrderStatus  @default(PENDING_PAYMENT)
+  customerEmailSnapshot String       @db.VarChar(254)
+  billingAddressSnapshot Json
+  shippingAddressSnapshot Json
+  subtotalNetMinor      BigInt
+  taxMinor              BigInt
+  deliveryNetMinor      BigInt
+  deliveryVatMinor      BigInt
+  totalGrossMinor       BigInt
+  currency              String       @default("GBP") @db.Char(3)
+  placedAt              DateTime     @default(now())
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  customerAccount       CustomerAccount @relation(fields: [customerAccountId], references: [id], onDelete: Restrict)
+  placedBy              User         @relation("OrderPlacedBy", fields: [placedByUserId], references: [id], onDelete: Restrict)
+  cart                  Cart?        @relation(fields: [cartId], references: [id], onDelete: SetNull)
+  deliveryMethod        DeliveryMethod @relation(fields: [deliveryMethodId], references: [id], onDelete: Restrict)
+  lines                 OrderLine[]
+  payments              Payment[]
+  shipments             Shipment[]
+
+  @@index([customerAccountId, placedAt])
+  @@index([placedByUserId, placedAt])
+  @@index([status, placedAt])
+  @@map("orders")
+}
+
+model OrderLine {
+  id                    String              @id @default(cuid())
+  orderId               String
+  productId             String
+  priceTierId           String?
+  productNameSnapshot   String              @db.VarChar(180)
+  productSkuSnapshot    String              @db.VarChar(64)
+  quantity              Int
+  configurationSnapshot Json
+  lineNetMinor          BigInt
+  vatRateBps            Int
+  vatMinor              BigInt
+  lineGrossMinor        BigInt
+  currency              String              @default("GBP") @db.Char(3)
+  manufacturingMethod  ManufacturingMethod @default(UNASSIGNED)
+  createdAt             DateTime            @default(now())
+  order                 Order               @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product               Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  priceTier             ProductPriceTier?   @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  artwork               OrderLineArtwork[]
+  proof                 ArtworkProof[]
+  productionJob         ProductionJob?
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_lines")
+}
+
+model CartLineArtwork {
+  cartLineId  String
+  artworkId   String
+  cartLine    CartLine     @relation(fields: [cartLineId], references: [id], onDelete: Cascade)
+  artwork     ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Restrict)
+
+  @@id([cartLineId, artworkId])
+  @@map("cart_line_artwork")
+}
+
+model OrderLineArtwork {
+  orderLineId String
+  artworkId   String
+  orderLine   OrderLine    @relation(fields: [orderLineId], references: [id], onDelete: Restrict)
+  artwork     ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Restrict)
+
+  @@id([orderLineId, artworkId])
+  @@map("order_line_artwork")
+}
+
+model ArtworkAsset {
+  id                String           @id @default(cuid())
+  customerAccountId String
+  uploadedByUserId  String
+  storageProvider   String           @db.VarChar(48)
+  bucket            String           @db.VarChar(255)
+  objectKey         String           @unique @db.VarChar(1024)
+  originalFilename  String           @db.VarChar(255)
+  mimeType          String           @db.VarChar(127)
+  sizeBytes         BigInt
+  sha256            String?          @db.Char(64)
+  status            ArtworkStatus    @default(UPLOADING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?
+  customerAccount   CustomerAccount @relation(fields: [customerAccountId], references: [id], onDelete: Restrict)
+  uploadedBy        User             @relation("ArtworkUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  cartLines         CartLineArtwork[]
+  orderLines        OrderLineArtwork[]
+  proofs            ArtworkProof[]
+
+  @@index([customerAccountId, status, createdAt])
+  @@map("artwork_assets")
+}
+
+model ArtworkProof {
+  id                  String        @id @default(cuid())
+  orderLineId         String
+  sourceArtworkId     String
+  version             Int
+  status              ProofStatus   @default(PREPARING)
+  proofObjectKey      String?       @db.VarChar(1024)
+  reviewNotes         String?       @db.Text
+  customerResponse    String?       @db.Text
+  reviewedByUserId    String?
+  approvedByUserId    String?
+  reviewedAt          DateTime?
+  approvedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  orderLine           OrderLine     @relation(fields: [orderLineId], references: [id], onDelete: Restrict)
+  sourceArtwork       ArtworkAsset  @relation(fields: [sourceArtworkId], references: [id], onDelete: Restrict)
+  reviewedBy          User?         @relation("ProofReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedBy          User?         @relation("ProofApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([orderLineId, version])
+  @@index([status, createdAt])
+  @@map("artwork_proofs")
+}
+
+model ProductionJob {
+  id                  String           @id @default(cuid())
+  orderLineId         String           @unique
+  status              ProductionStatus @default(AWAITING_ARTWORK)
+  manufacturingMethod ManufacturingMethod @default(UNASSIGNED)
+  partnerName         String?          @db.VarChar(160)
+  assignedToUserId    String?
+  priority            Int              @default(0)
+  dueAt               DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  orderLine           OrderLine        @relation(fields: [orderLineId], references: [id], onDelete: Restrict)
+  assignedTo          User?            @relation("ProductionAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  history             ProductionStatusEvent[]
+
+  @@index([status, priority, dueAt])
+  @@map("production_jobs")
+}
+
+model ProductionStatusEvent {
+  id              String           @id @default(cuid())
+  productionJobId String
+  fromStatus      ProductionStatus?
+  toStatus        ProductionStatus
+  actorUserId     String?
+  note            String?          @db.VarChar(500)
+  createdAt       DateTime         @default(now())
+  productionJob   ProductionJob    @relation(fields: [productionJobId], references: [id], onDelete: Restrict)
+
+  @@index([productionJobId, createdAt])
+  @@map("production_status_events")
+}
+
+model Payment {
+  id                     String          @id @default(cuid())
+  orderId                String
+  provider               PaymentProvider @default(STRIPE)
+  status                 PaymentStatus   @default(PENDING)
+  attempt                Int             @default(1)
+  amountMinor            BigInt
+  currency               String          @default("GBP") @db.Char(3)
+  idempotencyKey         String          @unique @db.VarChar(255)
+  stripeCheckoutSessionId String?        @unique @db.VarChar(255)
+  stripePaymentIntentId  String?         @unique @db.VarChar(255)
+  failureCode            String?         @db.VarChar(100)
+  failureMessage         String?         @db.VarChar(500)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  succeededAt            DateTime?
+  order                  Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  events                 PaymentEvent[]
+
+  @@index([orderId, attempt])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+model PaymentEvent {
+  id                String       @id @default(cuid())
+  paymentId         String
+  stripeEventId     String?      @unique @db.VarChar(255)
+  eventType         String       @db.VarChar(160)
+  previousStatus    PaymentStatus?
+  nextStatus        PaymentStatus?
+  message           String?      @db.VarChar(500)
+  metadata          Json?
+  createdAt         DateTime     @default(now())
+  payment           Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, createdAt])
+  @@map("payment_events")
+}
+
+model StripeWebhookReceipt {
+  id             String    @id @default(cuid())
+  stripeEventId  String    @unique @db.VarChar(255)
+  eventType      String    @db.VarChar(160)
+  objectId       String?   @db.VarChar(255)
+  receivedAt     DateTime  @default(now())
+  processedAt    DateTime?
+  attemptCount   Int       @default(0)
+  lastError      String?   @db.VarChar(500)
+
+  @@index([processedAt, receivedAt])
+  @@map("stripe_webhook_receipts")
+}
+
+model Shipment {
+  id             String         @id @default(cuid())
+  orderId        String
+  status         ShipmentStatus @default(PREPARING)
+  carrierName    String?        @db.VarChar(120)
+  trackingNumber String?        @db.VarChar(160)
+  trackingUrl    String?        @db.VarChar(2048)
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  note           String?        @db.VarChar(500)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, status])
+  @@index([trackingNumber])
+  @@map("shipments")
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String   @db.VarChar(120)
+  entityType  String   @db.VarChar(120)
+  entityId    String   @db.VarChar(191)
+  before      Json?
+  after       Json?
+  requestId   String?  @db.VarChar(128)
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("admin_audit_logs")
+}

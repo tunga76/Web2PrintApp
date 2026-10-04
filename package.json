@@ -4,5 +4,14 @@
   "packageManager": "pnpm@12.8.1",
   "engines": {
     "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @web2print/storefront dev",
+    "build": "pnpm --filter @web2print/storefront build",
+    "typecheck": "pnpm --filter @web2print/storefront typecheck",
+    "lint": "pnpm --filter @web2print/storefront lint",
+    "test": "pnpm --filter @web2print/storefront test",
+    "db:validate": "pnpm --filter @web2print/storefront db:validate",
+    "db:migrate": "pnpm --filter @web2print/storefront db:migrate"
   }
 }

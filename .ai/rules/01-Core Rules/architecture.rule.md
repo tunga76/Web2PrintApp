@@ -6,12 +6,13 @@
 - **Clean Architecture:** Enforce strict dependency rules. Core domain logic must not depend on infrastructure, databases, or UI frameworks. Dependencies must point inwards towards the domain.
 - **Vertical Slice Architecture:** For features that don't fit perfectly into a strict layered architecture, prefer vertical slices (Feature-based organization) where a single feature contains its UI, API, Domain, and Data access code close together.
 
-## Backend Architecture (Node.js / TypeScript)
+## Full-Stack Architecture (Next.js / TypeScript)
 
-- Use the Node.js API framework selected for the project and organize request handling by business capability (for example, catalog, pricing, checkout, payment, and orders).
-- Keep domain decisions independent of HTTP, database, and provider SDKs. Put external side effects behind explicit interfaces/adapters and keep application use cases responsible for orchestration.
-- Select the database access library through an ADR. Keep persistence-specific models and query concerns at the infrastructure boundary; do not add repository abstractions where they only mirror the chosen library without protecting a meaningful boundary.
-- Start as a modular monolith. Introduce separately deployed services only when independent scaling, ownership, or isolation requirements justify the operational cost.
+- Use one Next.js App Router application as a modular monolith. Organize server and UI code by business capability (catalog, pricing, cart, checkout, payments, orders, artwork, and operations).
+- Use Route Handlers for HTTP APIs and Server Actions for suitable same-origin form mutations. Keep transport validation/authorization at these boundaries.
+- Keep domain decisions independent of React, HTTP, Prisma, and provider SDKs. Put persistence/provider effects behind feature-owned adapters and let application use cases orchestrate them.
+- Use PostgreSQL and Prisma Client through a server-only database module. Never import database code into Client Components.
+- Keep the module/folder structure small; do not create empty layers, microservices, or generic abstractions without a real consumer.
 
 ## Frontend Architecture (Next.js)
 

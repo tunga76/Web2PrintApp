@@ -22,26 +22,29 @@ src/
 └── types/                # Global TypeScript definitions
 ```
 
-## Backend (Node.js / TypeScript)
+## Full Stack (Next.js Route Handlers)
 
 ```text
 apps/
-├── storefront/                  # Next.js customer storefront and admin UI
-└── api/
+└── storefront/                  # Next.js customer storefront, admin UI, and APIs
     └── src/
-        ├── modules/
+        ├── app/                  # Pages, layouts, and thin Route Handlers
+        ├── features/
+        │   ├── auth/
         │   ├── catalog/
         │   ├── pricing/
         │   ├── cart/
         │   ├── checkout/
-        │   ├── payment/
+        │   ├── payments/
         │   ├── orders/
-        │   └── artwork/
-        ├── platform/             # Configuration, database, logging, HTTP setup
-        └── main.ts               # Application entry point
+        │   ├── artwork/
+        │   ├── production/
+        │   └── admin/
+        ├── components/           # Shared UI primitives and composed components
+        └── lib/                  # Database, auth, configuration, and shared server utilities
 
 packages/
 └── contracts/                   # Shared API schemas/types only when safely shareable
 ```
 
-Each backend module may contain `domain/`, `application/`, `infrastructure/`, and `http/` areas when its complexity warrants them. Keep the initial structure small; do not create empty layers or packages preemptively.
+Each feature may contain `domain/`, `application/`, `infrastructure/`, and `ui/` areas when its complexity warrants them. Route Handlers should stay thin and delegate to the feature. Keep the initial structure small; do not create empty layers or packages preemptively.
